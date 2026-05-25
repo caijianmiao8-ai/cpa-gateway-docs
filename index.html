@@ -266,15 +266,6 @@
   .cfg-result { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
   .cfg-result.ok  { color: var(--ok); }
   .cfg-result.err { color: var(--err); }
-  .cfg-note {
-    margin-top: 10px;
-    padding: 8px 12px;
-    background: color-mix(in srgb, var(--muted) 8%, transparent);
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.55;
-  }
 
   /* Footer */
   footer { color: var(--muted); font-size: 13px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); }
@@ -345,10 +336,6 @@
       <div class="cfg-row">
         <button id="cfg-copy-test" class="cfg-btn">📋 复制 curl 测试命令</button>
         <span id="cfg-result" class="cfg-result"></span>
-      </div>
-      <div class="cfg-note">
-        因为本页走 HTTPS、网关走 HTTP,浏览器会以 mixed-content 拦截,所以不在网页内直接发请求。
-        把上面按钮的命令贴到 VPC 内任意一台机器跑,2 秒验证连通性。
       </div>
     </div>
 
