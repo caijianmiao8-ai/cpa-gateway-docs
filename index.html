@@ -266,6 +266,15 @@
   .cfg-result { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
   .cfg-result.ok  { color: var(--ok); }
   .cfg-result.err { color: var(--err); }
+  .cfg-note {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--muted) 8%, transparent);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
 
   /* Footer */
   footer { color: var(--muted); font-size: 13px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); }
@@ -334,8 +343,12 @@
         <input id="cfg-vkey" type="text" placeholder="vk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="">
       </div>
       <div class="cfg-row">
-        <button id="cfg-test" class="cfg-btn">▶ 测试连接 (GET /v1/balance)</button>
+        <button id="cfg-copy-test" class="cfg-btn">📋 复制 curl 测试命令</button>
         <span id="cfg-result" class="cfg-result"></span>
+      </div>
+      <div class="cfg-note">
+        因为本页走 HTTPS、网关走 HTTP,浏览器会以 mixed-content 拦截,所以不在网页内直接发请求。
+        把上面按钮的命令贴到 VPC 内任意一台机器跑,2 秒验证连通性。
       </div>
     </div>
 
@@ -915,32 +928,39 @@ curl -sS --no-buffer $BASE/v1/chat/completions \
   cfgVkey.addEventListener('input', refresh);
   refresh();
 
-  // ── Test-connection button ──────────────────────────────────────────
-  const testBtn = document.getElementById('cfg-test');
-  const testRes = document.getElementById('cfg-result');
-  testBtn.addEventListener('click', async () => {
-    const base = cfgBase.value.replace(/\/$/, '');
-    const vkey = cfgVkey.value.trim();
-    if (!base || !vkey) {
-      testRes.className = 'cfg-result err';
-      testRes.textContent = '请先填 Base URL 和 vkey';
-      return;
-    }
-    testRes.className = 'cfg-result';
-    testRes.textContent = '请求中…';
-    try {
-      const r = await fetch(base + '/v1/balance', { headers: { 'Authorization': 'Bearer ' + vkey } });
-      const data = await r.json();
-      if (r.ok) {
-        testRes.className = 'cfg-result ok';
-        testRes.textContent = '✓ 连通 · label=' + (data.label || '?') + ' · spent=$' + (data.total_spent_usd ?? 0).toFixed(4);
-      } else {
-        testRes.className = 'cfg-result err';
-        testRes.textContent = '✗ HTTP ' + r.status + ' · ' + (data.error && data.error.message || 'unknown error');
-      }
-    } catch (e) {
-      testRes.className = 'cfg-result err';
-      testRes.textContent = '✗ 网络错误: ' + e.message + ' (检查 base URL 是否可达 / CORS)';
+  // ── "Copy curl test" button ─────────────────────────────────────────
+  // We can't fetch the gateway directly from this page: docs is HTTPS,
+  // gateway is HTTP-only inside the VPC → browser blocks mixed-content.
+  // So we hand the colleague a ready-to-paste curl command instead.
+  const copyBtn = document.getElementById('cfg-copy-test');
+  const copyRes = document.getElementById('cfg-result');
+  copyBtn.addEventListener('click', () => {
+    const base = cfgBase.value.replace(/\/$/, '') || 'http://172.26.2.232:8088';
+    const vkey = cfgVkey.value.trim() || '<填入你的 vkey>';
+    const cmd = 'curl -sS ' + base + '/v1/balance -H "Authorization: Bearer ' + vkey + '"';
+    const flash = (cls, msg) => {
+      copyRes.className = 'cfg-result ' + cls;
+      copyRes.textContent = msg;
+      setTimeout(() => { copyRes.textContent = ''; copyRes.className = 'cfg-result'; }, 2400);
+    };
+    const ok = () => flash('ok', '✓ 已复制 — 在 VPC 内任意机器粘贴执行即可');
+    const fallback = () => {
+      // execCommand-style fallback (no clipboard API or rejected by browser)
+      const ta = document.createElement('textarea');
+      ta.value = cmd;
+      ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        if (document.execCommand('copy')) ok();
+        else flash('err', '复制失败,手动选择上面的示例代码复制');
+      } catch (e) { flash('err', '复制失败'); }
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cmd).then(ok, fallback);
+    } else {
+      fallback();
     }
   });
 
