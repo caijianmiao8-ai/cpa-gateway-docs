@@ -311,6 +311,7 @@
     <a href="#headers">响应 header</a>
     <a href="#errors">错误码</a>
     <a href="#limits">限制</a>
+    <a href="#coverage">覆盖范围与上游</a>
 
     <div class="nav-section">示例</div>
     <a href="#try">cURL 示例</a>
@@ -405,26 +406,210 @@
       <button class="code-copy">复制</button>
     </div>
 
+    <h3 id="responses-post">Responses API</h3>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1/responses</code>
+      <span class="desc">OpenAI 新一代 stateful chat API</span>
+    </div>
+    <p>跟 <code>/v1/chat/completions</code> 不同:用 <code>input</code> 字段而非 <code>messages</code>;响应是 <code>output[]</code> 数组,每项有 <code>type</code> (<code>message</code> / <code>tool_use</code> / <code>refusal</code>...) 和 <code>content[]</code> 块。Codex / GPT-5 系列模型都走这条。</p>
+    <div class="code-wrap">
+      <pre id="ex-responses-simple">curl -sS __BASE_URL__/v1/responses \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.4",
+    "input": "用一句话解释 RAG。"
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p><code>input</code> 也可以是消息数组,带 system 指令:</p>
+    <div class="code-wrap">
+      <pre id="ex-responses-msg">curl -sS __BASE_URL__/v1/responses \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.5",
+    "input": [
+      {"role": "system", "content": "You are concise."},
+      {"role": "user",   "content": "List 3 NoSQL databases."}
+    ],
+    "max_output_tokens": 200
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>响应形如:</p>
+    <div class="code-wrap">
+      <pre>{
+  "id": "resp_xxxxx",
+  "object": "response",
+  "model": "gpt-5.5",
+  "status": "completed",
+  "output": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {"type": "output_text", "text": "1. MongoDB\n2. Redis\n3. Cassandra"}
+      ]
+    }
+  ],
+  "usage": {"input_tokens": 28, "output_tokens": 18, "total_tokens": 46}
+}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>流式加 <code>"stream": true</code>,SSE 事件名是 <code>response.created</code> / <code>response.output_text.delta</code> / <code>response.completed</code>:</p>
+    <div class="code-wrap">
+      <pre id="ex-responses-stream">curl -sS --no-buffer __BASE_URL__/v1/responses \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.4",
+    "input": "用三句话讲一个童话。",
+    "stream": true
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
     <h2 id="messages">Anthropic 兼容</h2>
     <div class="ep">
       <span class="badge post">POST</span>
       <code>/v1/messages</code>
       <span class="desc">Anthropic / Claude 原生 schema</span>
     </div>
-    <p>给你 SDK 直接走 <code>@anthropic-ai/sdk</code> 或 <code>anthropic</code> Python 包用。请求 / 响应字段与官方一致。</p>
+    <p>Anthropic 官方 schema,可直接用 <code>@anthropic-ai/sdk</code> 或 <code>anthropic</code> Python 包。<strong>注意 3 点</strong>:</p>
+    <ul>
+      <li><code>system</code> 是 <strong>顶层</strong>字段,不放在 <code>messages</code> 里</li>
+      <li><code>max_tokens</code> 是 <strong>必填</strong></li>
+      <li><code>content</code> 可以是字符串,也可以是块数组(混合图文用)</li>
+    </ul>
+    <div class="code-wrap">
+      <pre id="ex-msg-simple">curl -sS __BASE_URL__/v1/messages \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-haiku-4.5",
+    "max_tokens": 256,
+    "system": "你是一个简明扼要的助手。",
+    "messages": [
+      {"role": "user", "content": "解释一下 RAG。"}
+    ]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>带图片(content 块数组):</p>
+    <div class="code-wrap">
+      <pre id="ex-msg-image">curl -sS __BASE_URL__/v1/messages \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4.5",
+    "max_tokens": 512,
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text",  "text": "这张图里有什么?"},
+        {"type": "image", "source": {
+          "type": "base64", "media_type": "image/png", "data": "iVBORw0KGgo..."
+        }}
+      ]
+    }]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>响应形如:</p>
+    <div class="code-wrap">
+      <pre>{
+  "id": "msg_xxxxx",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4.5",
+  "content": [
+    {"type": "text", "text": "RAG 即检索增强生成..."}
+  ],
+  "stop_reason": "end_turn",
+  "usage": {"input_tokens": 25, "output_tokens": 88}
+}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>流式加 <code>"stream": true</code>,事件类型有 <code>message_start</code> / <code>content_block_delta</code> / <code>message_delta</code> / <code>message_stop</code>:</p>
+    <div class="code-wrap">
+      <pre id="ex-msg-stream">curl -sS --no-buffer __BASE_URL__/v1/messages \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-haiku-4.5",
+    "max_tokens": 200,
+    "stream": true,
+    "messages": [{"role":"user","content":"hi"}]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
 
     <h2 id="images">图像生成</h2>
     <div class="ep">
       <span class="badge post">POST</span>
       <code>/v1/images/generations</code>
-      <span class="desc">OpenAI 图像 API 兼容</span>
+      <span class="desc">OpenAI 图像 API 兼容(JSON)</span>
     </div>
     <div class="code-wrap">
       <pre>curl -sS __BASE_URL__/v1/images/generations \
   -H "Authorization: Bearer $VKEY" -H "Content-Type: application/json" \
-  -d '{"model":"gemini-3-pro-image-preview","prompt":"a serene mountain","n":1,"size":"1024x1024"}'</pre>
+  -d '{
+    "model":  "gemini-3-pro-image-preview",
+    "prompt": "a serene mountain at dawn, watercolor style",
+    "n":      1,
+    "size":   "1024x1024"
+  }'</pre>
       <button class="code-copy">复制</button>
     </div>
+    <p>响应形如(<code>b64_json</code> 或 <code>url</code>,取决于模型):</p>
+    <div class="code-wrap">
+      <pre>{
+  "created": 1729123456,
+  "data": [
+    {"b64_json": "iVBORw0KGgo..."}
+  ]
+}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h3 id="images-edits">图像编辑</h3>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1/images/edits</code>
+      <span class="desc">multipart form,不是 JSON</span>
+    </div>
+    <p>跟 <code>generations</code> 不同,这条<strong>必须用 multipart/form-data</strong>(因为要上传图)。字段:</p>
+    <ul>
+      <li><code>image</code> — <strong>必填</strong>,要编辑的原图(PNG / JPG)</li>
+      <li><code>prompt</code> — <strong>必填</strong>,编辑指令</li>
+      <li><code>mask</code> — 可选,蒙版图(白色区域=要修改的部分);不传则模型按 prompt 自己决定</li>
+      <li><code>model</code> — 可选,默认走模型路由</li>
+      <li><code>n</code> — 可选,生成几张</li>
+      <li><code>size</code> — 可选,如 <code>1024x1024</code></li>
+    </ul>
+    <p>基础用法(无 mask,整图修改):</p>
+    <div class="code-wrap">
+      <pre id="ex-edits-basic">curl -sS __BASE_URL__/v1/images/edits \
+  -H "Authorization: Bearer $VKEY" \
+  -F "image=@./input.png" \
+  -F "prompt=convert this photo to oil painting style" \
+  -F "model=gemini-3-pro-image-preview" \
+  -F "n=1" \
+  -F "size=1024x1024"</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>带 mask(只修改蒙版白色区域):</p>
+    <div class="code-wrap">
+      <pre id="ex-edits-mask">curl -sS __BASE_URL__/v1/images/edits \
+  -H "Authorization: Bearer $VKEY" \
+  -F "image=@./photo.png" \
+  -F "mask=@./mask.png" \
+  -F "prompt=replace the sky with a sunset"</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>响应跟 <code>generations</code> 一样,<code>data[]</code> 数组里是 <code>b64_json</code> 或 <code>url</code>。</p>
 
     <h2 id="models">模型列表</h2>
     <div class="ep">
@@ -510,7 +695,30 @@
       <li>请求体最大 <strong>2 MB</strong>(可单独放宽,联系管理员调 <code>max_body_kb</code>)</li>
       <li>并发数受 vkey 的 <code>max_concurrent</code> 限制(0 = 不限)</li>
       <li>SSE 流式连接保持时间无硬上限,但建议客户端 60s 无 chunk 就重连</li>
-      <li>不暴露的路由:embeddings / audio(cliproxy 不支持,返 404)</li>
+    </ul>
+
+    <h2 id="coverage">覆盖范围与上游</h2>
+    <p>本网关基于 <a href="https://github.com/router-for-me/CLIProxyAPI" style="color:var(--accent)">router-for-me/CLIProxyAPI v7.1.20</a>。cliproxy 内核还提供以下路由,但 <strong>本网关当前不暴露</strong>(走过的请求会返 404):</p>
+    <table>
+      <thead><tr><th>上游路径</th><th>说明</th><th>原因 / 状态</th></tr></thead>
+      <tbody>
+        <tr><td><code>POST /v1/completions</code></td><td>OpenAI legacy text completions</td><td>老接口,新 SDK 不用,可申请放行</td></tr>
+        <tr><td><code>POST /v1/messages/count_tokens</code></td><td>Claude token 计数</td><td>费用预估用,可申请放行</td></tr>
+        <tr><td><code>POST /v1/videos*</code><br><code>GET /v1/videos/:id</code></td><td>Sora / xAI 视频生成 (5 个路由)</td><td>需要视频提供方账号</td></tr>
+        <tr><td><code>POST /v1/responses/compact</code></td><td>Responses 上下文压缩</td><td>小众</td></tr>
+        <tr><td><code>GET /v1/responses</code></td><td>Responses WebSocket</td><td>WS 协议,HTTP 网关不适合</td></tr>
+        <tr><td><code>GET /v1beta/models</code><br><code>POST /v1beta/models/*action</code></td><td>Gemini 原生 API</td><td>计划放行(用原生 Google SDK 时需要)</td></tr>
+        <tr><td><code>/backend-api/codex/responses</code></td><td>Codex CLI 别名</td><td>等同 <code>/v1/responses</code></td></tr>
+        <tr><td><code>GET /healthz</code></td><td>健康探针</td><td>仅内部</td></tr>
+      </tbody>
+    </table>
+
+    <h3>上游配额透传</h3>
+    <p>除了上面列的 <code>X-RateLimit-*</code> / <code>X-Budget-*</code>(都是<strong>本 vkey 的状态</strong>)之外,上游 OAuth 账号的额度情况:</p>
+    <ul>
+      <li><strong>Codex (ChatGPT Plus)</strong> — 上游会通过 <code>X-Codex-Primary-Used-Percent</code> / <code>X-Codex-Secondary-Used-Percent</code> 等 header 返回 5h / 7d 配额窗口的实时占用。本网关在<strong>服务端跟踪并显示在管理面板</strong>,<strong>不透传给客户端</strong>(客户端只关心自己 vkey 余额,OAuth 账号配额由管理员维护)。</li>
+      <li><strong>Gemini OAuth</strong> — Google 不暴露剩余配额。触顶时只能从 <code>429 + quotaResetDelay</code> 得知。这是 Google 的限制,不是本网关漏报。</li>
+      <li><strong>OpenRouter / Groq (API key)</strong> — 按 token 实时计费,余量在管理员侧统一管理(<code>/api/openrouter-balance</code>)。</li>
     </ul>
 
     <h2 id="try">完整 cURL 示例</h2>
