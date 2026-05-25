@@ -304,6 +304,7 @@
     <a href="#chat">Chat / Responses</a>
     <a href="#messages">Anthropic 兼容</a>
     <a href="#images">图像生成</a>
+    <a href="#gemini-native">Gemini 原生</a>
     <a href="#models">模型列表</a>
     <a href="#balance">额度查询</a>
 
@@ -364,7 +365,11 @@
         <tr><td><span class="badge post">POST</span></td><td><code>/v1/messages</code></td><td>Anthropic / Claude 原生格式</td></tr>
         <tr><td><span class="badge post">POST</span></td><td><code>/v1/images/generations</code></td><td>文生图</td></tr>
         <tr><td><span class="badge post">POST</span></td><td><code>/v1/images/edits</code></td><td>图像编辑</td></tr>
-        <tr><td><span class="badge get">GET</span></td><td><code>/v1/models</code></td><td>列出本 vkey 可用的模型(已按白/黑名单过滤)</td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1beta/models/{model}:generateContent</code></td><td>Gemini 原生(unary)</td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1beta/models/{model}:streamGenerateContent</code></td><td>Gemini 原生(SSE)</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1/models</code></td><td>列出本 vkey 可用模型(OpenAI 命名)</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1beta/models</code></td><td>列出本 vkey 可用模型(Gemini 命名)</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1beta/models/{name}</code></td><td>查单个 Gemini 模型信息</td></tr>
         <tr><td><span class="badge get">GET</span></td><td><code>/v1/balance</code></td><td>查累计花费、今日花费、剩余配额</td></tr>
         <tr><td><span class="badge get">GET</span></td><td><code>/v1/account</code></td><td>同 <code>/v1/balance</code></td></tr>
         <tr><td><span class="badge get">GET</span></td><td><code>/v1/key/info</code></td><td>同 <code>/v1/balance</code></td></tr>
@@ -611,6 +616,120 @@
     </div>
     <p>响应跟 <code>generations</code> 一样,<code>data[]</code> 数组里是 <code>b64_json</code> 或 <code>url</code>。</p>
 
+    <h2 id="gemini-native">Gemini 原生 API</h2>
+    <p>如果你的客户端是 Google 官方 SDK (<code>@google/generative-ai</code>、<code>google-generativeai</code>),走这套原生协议。请求/响应 schema 与 Google AI Studio 一致。</p>
+
+    <h3 id="gemini-generate">generateContent (unary)</h3>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1beta/models/{model}:generateContent</code>
+      <span class="desc">模型名在 URL,不在 body</span>
+    </div>
+    <p>注意 3 点和 OpenAI 不同:</p>
+    <ul>
+      <li>模型名在 <strong>URL</strong>(<code>:generateContent</code> 前面),body 里没有 <code>model</code> 字段</li>
+      <li>消息字段是 <code>contents[]</code>,每条有 <code>role</code> + <code>parts[]</code>;不是 <code>messages[]</code></li>
+      <li>参数在 <code>generationConfig</code>(<code>temperature</code> / <code>maxOutputTokens</code> 等)</li>
+    </ul>
+    <div class="code-wrap">
+      <pre id="ex-gemini-simple">curl -sS __BASE_URL__/v1beta/models/gemini-2.5-flash:generateContent \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [
+      {"role": "user", "parts": [{"text": "用一句话解释 RAG。"}]}
+    ],
+    "generationConfig": {
+      "temperature": 0.4,
+      "maxOutputTokens": 200
+    }
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>带 system 指令(放 <code>systemInstruction</code>,不放 <code>contents</code>):</p>
+    <div class="code-wrap">
+      <pre id="ex-gemini-sys">curl -sS __BASE_URL__/v1beta/models/gemini-2.5-pro:generateContent \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemInstruction": {"parts": [{"text": "你是一位简明扼要的助手。"}]},
+    "contents": [
+      {"role": "user", "parts": [{"text": "比较一下 RAG 和 fine-tuning。"}]}
+    ]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>带图(<code>inline_data</code> base64):</p>
+    <div class="code-wrap">
+      <pre id="ex-gemini-img">curl -sS __BASE_URL__/v1beta/models/gemini-2.5-flash:generateContent \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{
+      "role": "user",
+      "parts": [
+        {"text": "这张图里有什么?"},
+        {"inline_data": {"mime_type": "image/png", "data": "iVBORw0KGgo..."}}
+      ]
+    }]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>响应:</p>
+    <div class="code-wrap">
+      <pre>{
+  "candidates": [{
+    "content": {
+      "parts": [{"text": "RAG (Retrieval-Augmented Generation) ..."}],
+      "role": "model"
+    },
+    "finishReason": "STOP",
+    "index": 0
+  }],
+  "usageMetadata": {
+    "promptTokenCount":     8,
+    "candidatesTokenCount": 42,
+    "totalTokenCount":      50
+  },
+  "modelVersion": "gemini-2.5-flash"
+}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h3 id="gemini-stream">streamGenerateContent (SSE)</h3>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1beta/models/{model}:streamGenerateContent?alt=sse</code>
+      <span class="desc">流式 — 加 <code>?alt=sse</code> 才走 SSE 格式</span>
+    </div>
+    <p>不加 <code>?alt=sse</code> 默认返回 JSON 流(每个 chunk 一行 JSON)。多数客户端希望 SSE,加上 <code>?alt=sse</code> 才走 <code>data: ...</code> 格式。</p>
+    <div class="code-wrap">
+      <pre id="ex-gemini-stream">curl -sS --no-buffer "__BASE_URL__/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse" \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contents": [{"role":"user","parts":[{"text":"数到 5"}]}]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h3 id="gemini-models">列模型 / 查模型</h3>
+    <div class="ep">
+      <span class="badge get">GET</span>
+      <code>/v1beta/models</code>
+      <span class="desc">Gemini 原生命名,已按 vkey 白名单过滤</span>
+    </div>
+    <div class="code-wrap">
+      <pre>curl -sS __BASE_URL__/v1beta/models -H "Authorization: Bearer $VKEY" | jq '.models | length'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>查单个模型详情:</p>
+    <div class="code-wrap">
+      <pre>curl -sS __BASE_URL__/v1beta/models/gemini-2.5-pro \
+  -H "Authorization: Bearer $VKEY"</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
     <h2 id="models">模型列表</h2>
     <div class="ep">
       <span class="badge get">GET</span>
@@ -707,7 +826,7 @@
         <tr><td><code>POST /v1/videos*</code><br><code>GET /v1/videos/:id</code></td><td>Sora / xAI 视频生成 (5 个路由)</td><td>需要视频提供方账号</td></tr>
         <tr><td><code>POST /v1/responses/compact</code></td><td>Responses 上下文压缩</td><td>小众</td></tr>
         <tr><td><code>GET /v1/responses</code></td><td>Responses WebSocket</td><td>WS 协议,HTTP 网关不适合</td></tr>
-        <tr><td><code>GET /v1beta/models</code><br><code>POST /v1beta/models/*action</code></td><td>Gemini 原生 API</td><td>计划放行(用原生 Google SDK 时需要)</td></tr>
+        <tr><td colspan="3" style="text-align:center;font-size:12px;color:var(--muted)">— Gemini 原生 API 已放行(见<a href="#gemini-native" style="color:var(--accent)">上面段落</a>) —</td></tr>
         <tr><td><code>/backend-api/codex/responses</code></td><td>Codex CLI 别名</td><td>等同 <code>/v1/responses</code></td></tr>
         <tr><td><code>GET /healthz</code></td><td>健康探针</td><td>仅内部</td></tr>
       </tbody>
