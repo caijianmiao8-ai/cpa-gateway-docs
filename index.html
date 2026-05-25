@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CPA Gateway · API Reference</title>
+<style>
+  :root {
+    --bg:        #0c0d10;
+    --panel:     #15171c;
+    --panel-2:   #1c1f25;
+    --border:    #262932;
+    --text:      #e6e8ec;
+    --muted:     #8a8f9a;
+    --accent:    #d97757;
+    --ok:        #3fb950;
+    --warn:      #d29922;
+    --err:       #f85149;
+    --code-bg:   #0f1116;
+    --code-text: #e6e8ec;
+    --shadow:    0 1px 0 rgba(255,255,255,.04) inset, 0 8px 24px rgba(0,0,0,.3);
+  }
+  [data-theme="light"] {
+    --bg:        #fbfbfa;
+    --panel:     #fff;
+    --panel-2:   #f5f5f4;
+    --border:    #e6e6e3;
+    --text:      #1c1c1a;
+    --muted:     #6a6a64;
+    --accent:    #c8553b;
+    --code-bg:   #f7f7f4;
+    --code-text: #1c1c1a;
+    --shadow:    0 1px 2px rgba(0,0,0,.04), 0 1px 0 rgba(0,0,0,.02) inset;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+                 "Microsoft YaHei", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, .mono {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+
+  /* Header */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(10px);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    border-bottom: 1px solid var(--border);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 600; font-size: 15px; letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    border-radius: 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 12px;
+  }
+  .brand-sub { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .h-actions { display: flex; gap: 8px; align-items: center; }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .icon-btn:hover { background: var(--panel); }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); max-width: 1240px; margin: 0 auto; }
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    height: calc(100vh - 56px);
+    overflow-y: auto;
+    position: sticky;
+    top: 56px;
+  }
+  aside .nav-section {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 12px 6px;
+  }
+  aside a {
+    display: block;
+    padding: 6px 12px;
+    color: var(--text);
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  aside a:hover { background: var(--panel); }
+  aside a.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+  main { padding: 32px 48px 80px; min-width: 0; }
+  h1 { font-size: 32px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 22px; font-weight: 600; margin: 56px 0 16px;
+    padding-top: 24px; border-top: 1px solid var(--border);
+    letter-spacing: -0.01em;
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; margin-top: 32px; }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+  p { margin: 12px 0; }
+  .lede { color: var(--muted); font-size: 17px; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* Badge */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: "SF Mono", Menlo, monospace;
+    letter-spacing: 0.02em;
+  }
+  .badge.get  { background: rgba(63,185,80,.15);  color: var(--ok); }
+  .badge.post { background: rgba(91,141,239,.15); color: #5b8def; }
+  .badge.del  { background: rgba(248,81,73,.15);  color: var(--err); }
+  [data-theme="light"] .badge.get  { background: rgba(20,140,55,.10); color: #148c37; }
+  [data-theme="light"] .badge.post { background: rgba(40,90,200,.10); color: #2059c4; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--code-text); }
+
+  /* Inline code */
+  p code, li code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--code-text); font-size: 13px; }
+
+  /* Code blocks */
+  .code-wrap { position: relative; margin: 16px 0; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    margin: 0;
+    line-height: 1.55;
+  }
+  .code-copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 5px;
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .code-wrap:hover .code-copy { opacity: 1; }
+  .code-copy:hover { color: var(--text); background: var(--panel); }
+  .code-copy.copied { color: var(--ok); }
+
+  /* Endpoint header rows */
+  .ep {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 8px 0 4px;
+  }
+  .ep code { background: transparent; padding: 0; font-size: 14px; }
+  .ep .desc { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+  /* Callout */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout strong { color: var(--accent); }
+
+  /* Config panel */
+  .cfg {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 20px 0 28px;
+    box-shadow: var(--shadow);
+  }
+  .cfg-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+  }
+  .cfg-row {
+    display: flex; align-items: center; gap: 12px;
+    margin: 8px 0;
+  }
+  .cfg-row label {
+    width: 80px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .cfg-row input {
+    flex: 1;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  .cfg-row input:focus { border-color: var(--accent); }
+  .cfg-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 92px;
+  }
+  .cfg-btn:hover { filter: brightness(1.08); }
+  .cfg-result { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
+  .cfg-result.ok  { color: var(--ok); }
+  .cfg-result.err { color: var(--err); }
+
+  /* Footer */
+  footer { color: var(--muted); font-size: 13px; margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); }
+
+  /* Mobile */
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { display: none; }
+    main { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-mark">C</span>
+    <span>CPA Gateway</span>
+    <span class="brand-sub">· API Reference</span>
+  </div>
+  <div class="h-actions">
+    <a class="icon-btn" href="#try" title="跳到示例">▶</a>
+    <button class="icon-btn" id="theme-toggle" title="切换主题">◐</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside>
+    <div class="nav-section">入门</div>
+    <a href="#overview">概览</a>
+    <a href="#auth">鉴权</a>
+
+    <div class="nav-section">参考</div>
+    <a href="#endpoints">所有端点</a>
+    <a href="#chat">Chat / Responses</a>
+    <a href="#messages">Anthropic 兼容</a>
+    <a href="#images">图像生成</a>
+    <a href="#models">模型列表</a>
+    <a href="#balance">额度查询</a>
+
+    <div class="nav-section">细节</div>
+    <a href="#headers">响应 header</a>
+    <a href="#errors">错误码</a>
+    <a href="#limits">限制</a>
+
+    <div class="nav-section">示例</div>
+    <a href="#try">cURL 示例</a>
+  </aside>
+
+  <main>
+
+    <h1>CPA Gateway</h1>
+    <p class="lede">OpenAI 兼容的统一网关。一把 <code>vkey</code> 调通 Codex / Gemini / Groq / OpenRouter 等多家上游,实时配额随响应返回。</p>
+
+    <div class="cfg">
+      <div class="cfg-title">配置 — 填一次,下方所有示例自动更新</div>
+      <div class="cfg-row">
+        <label>Base URL</label>
+        <input id="cfg-base" placeholder="http://172.26.2.232:8088" value="http://172.26.2.232:8088">
+      </div>
+      <div class="cfg-row">
+        <label>vkey</label>
+        <input id="cfg-vkey" type="text" placeholder="vk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="">
+      </div>
+      <div class="cfg-row">
+        <button id="cfg-test" class="cfg-btn">▶ 测试连接 (GET /v1/balance)</button>
+        <span id="cfg-result" class="cfg-result"></span>
+      </div>
+    </div>
+
+    <h2 id="overview">概览</h2>
+    <p>本服务是 <code>cli-proxy-api</code> 的前置网关:统一鉴权、按虚拟 key (vkey) 限速 / 限额 / 限模型,转发到多家上游 LLM 提供方。</p>
+    <ul>
+      <li>接口 <strong>OpenAI 兼容</strong>(也支持 Anthropic <code>/v1/messages</code> 原生格式)</li>
+      <li>支持 <strong>SSE 流式</strong>(<code>stream: true</code>)</li>
+      <li>每次响应都带 <code>X-RateLimit-*</code> / <code>X-Budget-*</code> header,客户端可实时算余额</li>
+      <li>CORS 全开(<code>Access-Control-Allow-Origin: *</code>),浏览器直连可用</li>
+    </ul>
+
+    <h2 id="auth">鉴权</h2>
+    <p>所有请求需带 Bearer token:</p>
+    <div class="code-wrap">
+      <pre>Authorization: Bearer $VKEY</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>或者用 <code>X-API-Key: vk-...</code>。两种都支持。无效 / 过期 / 被禁用的 vkey 返回 <code>401</code>。</p>
+
+    <h2 id="endpoints">所有端点</h2>
+    <table>
+      <thead><tr><th style="width:80px">方法</th><th>路径</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1/chat/completions</code></td><td>OpenAI 格式 chat,支持 <code>stream</code></td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1/responses</code></td><td>OpenAI Responses API</td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1/messages</code></td><td>Anthropic / Claude 原生格式</td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1/images/generations</code></td><td>文生图</td></tr>
+        <tr><td><span class="badge post">POST</span></td><td><code>/v1/images/edits</code></td><td>图像编辑</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1/models</code></td><td>列出本 vkey 可用的模型(已按白/黑名单过滤)</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1/balance</code></td><td>查累计花费、今日花费、剩余配额</td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1/account</code></td><td>同 <code>/v1/balance</code></td></tr>
+        <tr><td><span class="badge get">GET</span></td><td><code>/v1/key/info</code></td><td>同 <code>/v1/balance</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="chat">Chat / Responses</h2>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1/chat/completions</code>
+      <span class="desc">OpenAI 标准 chat,完全兼容</span>
+    </div>
+    <p>请求体跟 OpenAI 一致:<code>model</code>、<code>messages[]</code>、可选 <code>stream</code>、<code>max_tokens</code>、<code>temperature</code>、<code>tools</code> 等。</p>
+    <div class="code-wrap">
+      <pre id="ex-chat">curl -sS __BASE_URL__/v1/chat/completions \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-3.3-70b",
+    "messages": [
+      {"role": "system", "content": "你是一个简明扼要的助手。"},
+      {"role": "user",   "content": "用一句话解释 SSE。"}
+    ]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h3>流式</h3>
+    <p>加 <code>"stream": true</code>,响应是 <code>text/event-stream</code>,每个 chunk 是 <code>data: {...}</code>,以 <code>data: [DONE]</code> 结束。</p>
+    <div class="code-wrap">
+      <pre id="ex-stream">curl -sS --no-buffer __BASE_URL__/v1/chat/completions \
+  -H "Authorization: Bearer $VKEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "or-claude-haiku",
+    "messages": [{"role":"user","content":"hi"}],
+    "stream": true
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h2 id="messages">Anthropic 兼容</h2>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1/messages</code>
+      <span class="desc">Anthropic / Claude 原生 schema</span>
+    </div>
+    <p>给你 SDK 直接走 <code>@anthropic-ai/sdk</code> 或 <code>anthropic</code> Python 包用。请求 / 响应字段与官方一致。</p>
+
+    <h2 id="images">图像生成</h2>
+    <div class="ep">
+      <span class="badge post">POST</span>
+      <code>/v1/images/generations</code>
+      <span class="desc">OpenAI 图像 API 兼容</span>
+    </div>
+    <div class="code-wrap">
+      <pre>curl -sS __BASE_URL__/v1/images/generations \
+  -H "Authorization: Bearer $VKEY" -H "Content-Type: application/json" \
+  -d '{"model":"gemini-3-pro-image-preview","prompt":"a serene mountain","n":1,"size":"1024x1024"}'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h2 id="models">模型列表</h2>
+    <div class="ep">
+      <span class="badge get">GET</span>
+      <code>/v1/models</code>
+      <span class="desc">仅返回本 vkey 有权调用的</span>
+    </div>
+    <p>响应是 OpenAI 标准 <code>{"data":[{"id":"...","object":"model"}, ...]}</code>。常见模型节选:</p>
+    <table>
+      <thead><tr><th>Provider</th><th>OAuth(订阅,对你 $0)</th><th>API key(按 token 计费)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Codex</strong> (ChatGPT Plus)</td><td><code>gpt-5.4</code>, <code>gpt-5.5</code>, <code>gpt-5.3-codex</code>, <code>codex-*</code></td><td>—</td></tr>
+        <tr><td><strong>Gemini</strong></td><td><code>gemini-2.5-pro</code>, <code>gemini-2.5-flash</code>, <code>gemini-3-pro-image-preview</code></td><td>—</td></tr>
+        <tr><td><strong>Groq</strong></td><td>—</td><td><code>llama-3.3-70b</code>, <code>qwen3-32b</code>, <code>gpt-oss-20b</code>, <code>gpt-oss-120b</code></td></tr>
+        <tr><td><strong>OpenRouter</strong></td><td>—</td><td><code>or-claude-haiku</code>, <code>or-claude-sonnet</code>, <code>or-gpt-4o</code>, <code>or-ds-chat</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      OAuth 模型走 ChatGPT Plus / Gemini 订阅,对你免费;但订阅有 <strong>5h / 7d 配额窗口</strong>,触顶会 429,可改 API key 模型继续。
+    </div>
+
+    <h2 id="balance">额度查询</h2>
+    <div class="ep">
+      <span class="badge get">GET</span>
+      <code>/v1/balance</code>
+      <span class="desc">本 vkey 的累计 / 今日 / 配额</span>
+    </div>
+    <div class="code-wrap">
+      <pre>{
+  "label":                "colleague",
+  "owner":                "",
+  "total_spent_usd":      0.0,
+  "today_spent_usd":      0.0,
+  "total_requests":       12,
+  "budget_usd":           0,
+  "daily_budget_usd":     0,
+  "rpm_limit":            0,
+  "tpm_limit":            0,
+  "budget_remaining_usd": null,
+  "daily_remaining_usd":  null
+}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+    <p>所有 <code>*_limit</code> / <code>budget_*</code> 字段:<code>0</code> 表示不限,<code>*_remaining_*</code> 为 <code>null</code> 表示不限。</p>
+
+    <h2 id="headers">响应 header</h2>
+    <p>每个成功的调用都会在响应 header 里带上当前的额度状态,无需额外查询。</p>
+    <table>
+      <thead><tr><th>Header</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>X-RateLimit-Limit-Requests</code></td><td>本 vkey 的 RPM 上限(0 = 不限)</td></tr>
+        <tr><td><code>X-RateLimit-Remaining-Requests</code></td><td>本分钟剩余请求数</td></tr>
+        <tr><td><code>X-RateLimit-Limit-Tokens</code></td><td>本 vkey 的 TPM 上限</td></tr>
+        <tr><td><code>X-RateLimit-Remaining-Tokens</code></td><td>本分钟剩余 token 配额</td></tr>
+        <tr><td><code>X-Budget-Limit-USD</code></td><td>总预算上限(美元)</td></tr>
+        <tr><td><code>X-Budget-Remaining-USD</code></td><td>总预算剩余</td></tr>
+        <tr><td><code>X-Daily-Budget-Limit-USD</code></td><td>日预算上限</td></tr>
+        <tr><td><code>X-Daily-Budget-Remaining-USD</code></td><td>今日剩余日预算</td></tr>
+        <tr><td><code>X-Daily-Budget-Reset</code></td><td>下一次日预算重置时间(UTC ISO8601)</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="errors">错误码</h2>
+    <table>
+      <thead><tr><th>HTTP</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge del">401</span></td><td>vkey 缺失 / 错误 / 过期 / 禁用</td></tr>
+        <tr><td><span class="badge del">403</span></td><td>这个 vkey 没权限调这个模型</td></tr>
+        <tr><td><span class="badge del">413</span></td><td>请求体超过 <code>max_body_kb</code>(默认 2 MB)</td></tr>
+        <tr><td><span class="badge del">429</span></td><td>限额触发 —— RPM / TPM / budget / 日预算 / 并发,看 <code>X-*-Remaining</code></td></tr>
+        <tr><td><span class="badge del">502</span></td><td>上游(OpenAI / Anthropic / Gemini)错</td></tr>
+        <tr><td><span class="badge del">504</span></td><td>上游超时(可重试)</td></tr>
+      </tbody>
+    </table>
+    <p>错误体统一形如:</p>
+    <div class="code-wrap">
+      <pre>{"error": {"message": "rate limit exceeded: 60/60 in last 60s", "type": "rate_limit_exceeded"}}</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <h2 id="limits">限制</h2>
+    <ul>
+      <li>请求体最大 <strong>2 MB</strong>(可单独放宽,联系管理员调 <code>max_body_kb</code>)</li>
+      <li>并发数受 vkey 的 <code>max_concurrent</code> 限制(0 = 不限)</li>
+      <li>SSE 流式连接保持时间无硬上限,但建议客户端 60s 无 chunk 就重连</li>
+      <li>不暴露的路由:embeddings / audio(cliproxy 不支持,返 404)</li>
+    </ul>
+
+    <h2 id="try">完整 cURL 示例</h2>
+    <p>把下面的 <code>$VKEY</code> 换成自己的 vkey 即可:</p>
+    <div class="code-wrap">
+      <pre id="ex-full">export VKEY="vk-你的key"
+export BASE="__BASE_URL__"
+
+# 1. 列模型
+curl -sS $BASE/v1/models -H "Authorization: Bearer $VKEY" | jq '.data | length'
+
+# 2. 查余额
+curl -sS $BASE/v1/balance -H "Authorization: Bearer $VKEY"
+
+# 3. chat (非流式)
+curl -sS $BASE/v1/chat/completions \
+  -H "Authorization: Bearer $VKEY" -H "Content-Type: application/json" \
+  -d '{"model":"llama-3.3-70b","messages":[{"role":"user","content":"hi"}]}'
+
+# 4. chat (流式)
+curl -sS --no-buffer $BASE/v1/chat/completions \
+  -H "Authorization: Bearer $VKEY" -H "Content-Type: application/json" \
+  -d '{"model":"or-claude-haiku","messages":[{"role":"user","content":"hi"}],"stream":true}'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <footer>
+      CPA Gateway · 部署在 Lightsail · 出问题艾特管理员看 <code>journalctl -u cpa-panel</code>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  // ── Config-driven example interpolation ─────────────────────────────
+  // Snapshot original templates with __BASE_URL__ / $VKEY tokens.
+  const codeBlocks = Array.from(document.querySelectorAll('pre'));
+  codeBlocks.forEach(pre => { pre.dataset.tpl = pre.textContent; });
+
+  const cfgBase = document.getElementById('cfg-base');
+  const cfgVkey = document.getElementById('cfg-vkey');
+
+  // Restore from localStorage (vkey kept locally; never leaves browser)
+  try {
+    const savedBase = localStorage.getItem('cpa-docs-base');
+    const savedVkey = localStorage.getItem('cpa-docs-vkey');
+    if (savedBase) cfgBase.value = savedBase;
+    if (savedVkey) cfgVkey.value = savedVkey;
+  } catch (e) {}
+
+  function refresh() {
+    const base = (cfgBase.value || 'http://172.26.2.232:8088').replace(/\/$/, '');
+    const vkey = cfgVkey.value.trim();
+    const vkeyDisplay = vkey || 'vk-你的key';
+    codeBlocks.forEach(pre => {
+      let txt = pre.dataset.tpl
+        .replaceAll('__BASE_URL__', base)
+        .replaceAll('$BASE', base);
+      // Only substitute $VKEY when user provided one — otherwise keep the
+      // literal $VKEY env-var reference so the bash examples still teach the
+      // export-then-use pattern.
+      if (vkey) {
+        txt = txt.replace(/Bearer \$VKEY/g, 'Bearer ' + vkey)
+                 .replace(/export VKEY="vk-你的key"/, 'export VKEY="' + vkey + '"');
+      }
+      pre.textContent = txt;
+    });
+    try {
+      localStorage.setItem('cpa-docs-base', base);
+      if (vkey) localStorage.setItem('cpa-docs-vkey', vkey);
+    } catch (e) {}
+  }
+  cfgBase.addEventListener('input', refresh);
+  cfgVkey.addEventListener('input', refresh);
+  refresh();
+
+  // ── Test-connection button ──────────────────────────────────────────
+  const testBtn = document.getElementById('cfg-test');
+  const testRes = document.getElementById('cfg-result');
+  testBtn.addEventListener('click', async () => {
+    const base = cfgBase.value.replace(/\/$/, '');
+    const vkey = cfgVkey.value.trim();
+    if (!base || !vkey) {
+      testRes.className = 'cfg-result err';
+      testRes.textContent = '请先填 Base URL 和 vkey';
+      return;
+    }
+    testRes.className = 'cfg-result';
+    testRes.textContent = '请求中…';
+    try {
+      const r = await fetch(base + '/v1/balance', { headers: { 'Authorization': 'Bearer ' + vkey } });
+      const data = await r.json();
+      if (r.ok) {
+        testRes.className = 'cfg-result ok';
+        testRes.textContent = '✓ 连通 · label=' + (data.label || '?') + ' · spent=$' + (data.total_spent_usd ?? 0).toFixed(4);
+      } else {
+        testRes.className = 'cfg-result err';
+        testRes.textContent = '✗ HTTP ' + r.status + ' · ' + (data.error && data.error.message || 'unknown error');
+      }
+    } catch (e) {
+      testRes.className = 'cfg-result err';
+      testRes.textContent = '✗ 网络错误: ' + e.message + ' (检查 base URL 是否可达 / CORS)';
+    }
+  });
+
+  // Theme toggle (persist in localStorage)
+  const root = document.documentElement;
+  const saved = localStorage.getItem('cpa-docs-theme');
+  if (saved) root.setAttribute('data-theme', saved);
+  document.getElementById('theme-toggle').onclick = () => {
+    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('cpa-docs-theme', next);
+  };
+
+  // Code copy buttons
+  document.querySelectorAll('.code-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pre = btn.parentElement.querySelector('pre');
+      if (!pre) return;
+      const text = pre.textContent;
+      const done = () => {
+        const old = btn.textContent;
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1200);
+      };
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else {
+        fallback();
+      }
+    });
+  });
+
+  // Sidebar active-link highlighting on scroll
+  const links = Array.from(document.querySelectorAll('aside a[href^="#"]'));
+  const sections = links.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const onScroll = () => {
+    let cur = sections[0];
+    for (const s of sections) {
+      if (s.getBoundingClientRect().top < 100) cur = s;
+    }
+    links.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + (cur && cur.id));
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
