@@ -327,7 +327,7 @@
       <div class="cfg-title">配置 — 填一次,下方所有示例自动更新</div>
       <div class="cfg-row">
         <label>Base URL</label>
-        <input id="cfg-base" placeholder="http://172.26.2.232:8088" value="http://172.26.2.232:8088">
+        <input id="cfg-base" placeholder="https://or-api.joyviz.ai" value="https://or-api.joyviz.ai">
       </div>
       <div class="cfg-row">
         <label>vkey</label>
@@ -890,7 +890,7 @@ curl -sS --no-buffer $BASE/v1/chat/completions \
   } catch (e) {}
 
   function refresh() {
-    const base = (cfgBase.value || 'http://172.26.2.232:8088').replace(/\/$/, '');
+    const base = (cfgBase.value || 'https://or-api.joyviz.ai').replace(/\/$/, '');
     const vkey = cfgVkey.value.trim();
     const vkeyDisplay = vkey || 'vk-你的key';
     codeBlocks.forEach(pre => {
@@ -922,7 +922,7 @@ curl -sS --no-buffer $BASE/v1/chat/completions \
   const copyBtn = document.getElementById('cfg-copy-test');
   const copyRes = document.getElementById('cfg-result');
   copyBtn.addEventListener('click', () => {
-    const base = cfgBase.value.replace(/\/$/, '') || 'http://172.26.2.232:8088';
+    const base = cfgBase.value.replace(/\/$/, '') || 'https://or-api.joyviz.ai';
     const vkey = cfgVkey.value.trim() || '<填入你的 vkey>';
     const cmd = 'curl -sS ' + base + '/v1/balance -H "Authorization: Bearer ' + vkey + '"';
     const flash = (cls, msg) => {
