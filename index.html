@@ -263,6 +263,15 @@
     margin-left: 92px;
   }
   .cfg-btn:hover { filter: brightness(1.08); }
+  .cfg-btn.cfg-btn-secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .cfg-btn.cfg-btn-secondary:hover {
+    background: var(--panel);
+    filter: none;
+  }
   .cfg-result { font-family: "SF Mono", Menlo, monospace; font-size: 12px; }
   .cfg-result.ok  { color: var(--ok); }
   .cfg-result.err { color: var(--err); }
@@ -333,8 +342,9 @@
         <label>vkey</label>
         <input id="cfg-vkey" type="text" placeholder="vk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="">
       </div>
-      <div class="cfg-row">
+      <div class="cfg-row" style="gap:8px">
         <button id="cfg-copy-test" class="cfg-btn">📋 复制 curl 测试命令</button>
+        <button id="cfg-copy-models" class="cfg-btn cfg-btn-secondary" title="抓所有可用模型 + 拷贝(供 OpenCode / Cursor 等手填粘贴)">📋 拷模型列表</button>
         <span id="cfg-result" class="cfg-result"></span>
       </div>
     </div>
@@ -989,6 +999,59 @@ curl -sS --no-buffer $BASE/v1/chat/completions \
       navigator.clipboard.writeText(cmd).then(ok, fallback);
     } else {
       fallback();
+    }
+  });
+
+  // ── "Fetch & copy models" button ────────────────────────────────────
+  // Hits /v1/models live, formats as newline-separated list, copies to clipboard.
+  // Use case: OpenCode Desktop / Cursor / any IDE that makes you manually paste
+  // each model id — paste this list and you're done.
+  // Format chosen: one-per-line is what 90% of "model list" UIs accept;
+  // for comma-separated UIs the user can sed-massage after pasting.
+  const modelsBtn = document.getElementById('cfg-copy-models');
+  modelsBtn.addEventListener('click', async () => {
+    const base = (cfgBase.value || '').replace(/\/$/, '');
+    const vkey = cfgVkey.value.trim();
+    const flash = (cls, msg) => {
+      copyRes.className = 'cfg-result ' + cls;
+      copyRes.textContent = msg;
+      setTimeout(() => { copyRes.textContent = ''; copyRes.className = 'cfg-result'; }, 4000);
+    };
+    if (!base || !vkey) {
+      flash('err', '先填 Base URL 和 vkey');
+      return;
+    }
+    flash('', '抓取中…');
+    let ids;
+    try {
+      const url = base.endsWith('/v1') ? base + '/models' : base + '/v1/models';
+      const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + vkey } });
+      if (!r.ok) { flash('err', '失败: HTTP ' + r.status); return; }
+      const data = await r.json();
+      ids = (data.data || []).map(m => m.id).filter(Boolean);
+      if (!ids.length) { flash('err', '没拿到模型(响应为空)'); return; }
+    } catch (e) {
+      flash('err', '网络错误: ' + (e.message || e));
+      return;
+    }
+    const text = ids.join('\n');
+    const ok = () => flash('ok', `✓ 已拷贝 ${ids.length} 个模型 — 粘到 OpenCode 模型字段即可`);
+    const showManual = () => {
+      // Fallback modal — show selectable text since clipboard write blocked.
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+      wrap.innerHTML = '<div style="background:var(--panel);padding:18px;border-radius:8px;max-width:520px;width:90%"><div style="font-weight:600;margin-bottom:8px">手动复制 (Cmd/Ctrl-C)</div><textarea readonly style="width:100%;height:200px;font-family:monospace;font-size:12px;background:var(--code-bg);color:var(--code-text);padding:8px;border-radius:6px;border:1px solid var(--border)"></textarea><div style="text-align:right;margin-top:10px"><button class="cfg-btn">关闭</button></div></div>';
+      const ta = wrap.querySelector('textarea');
+      ta.value = text;
+      document.body.appendChild(wrap);
+      ta.focus(); ta.select();
+      wrap.querySelector('button').onclick = () => wrap.remove();
+      wrap.onclick = (e) => { if (e.target === wrap) wrap.remove(); };
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, showManual);
+    } else {
+      showManual();
     }
   });
 
