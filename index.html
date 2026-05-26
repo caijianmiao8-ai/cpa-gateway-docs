@@ -750,6 +750,47 @@
       OAuth 模型走 ChatGPT Plus / Gemini 订阅,对你免费;但订阅有 <strong>5h / 7d 配额窗口</strong>,触顶会 429,可改 API key 模型继续。
     </div>
 
+    <h3 id="reasoning-effort">推理强度 (Codex / GPT-5.x / o-series)</h3>
+    <p>这类模型支持 <code>reasoning_effort</code> 控制内省深度 —— 越高越聪明但越慢、token 消耗倍增。两种用法:</p>
+
+    <p><strong>方法 1: body 显式参数</strong>(标准 OpenAI 写法,SDK 都支持):</p>
+    <div class="code-wrap">
+      <pre>curl __BASE_URL__/v1/chat/completions \
+  -H "Authorization: Bearer $VKEY" -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-5.5",
+    "reasoning_effort": "high",
+    "messages": [{"role":"user","content":"分析下这段代码的复杂度"}]
+  }'</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <p><strong>方法 2: 模型名后缀</strong>(给只能填 model ID 的 IDE 用,如 OpenCode Desktop / Cursor):</p>
+    <div class="code-wrap">
+      <pre># 三种分隔符都支持:
+gpt-5.5-low      或   gpt-5.5/low      或   gpt-5.5:low
+gpt-5.5-medium                                          (= 默认,可省略)
+gpt-5.5-high
+gpt-5.5-xhigh    # 最高强度,最慢
+
+# 也适用于:
+gpt-5.4-high
+gpt-5.3-codex-xhigh
+codex-mini-low</pre>
+      <button class="code-copy">复制</button>
+    </div>
+
+    <p>4 档可选:</p>
+    <table>
+      <thead><tr><th style="width:70px">值</th><th>速度</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>low</code></td><td>快</td><td>补全、改 typo</td></tr>
+        <tr><td><code>medium</code></td><td>中(默认)</td><td>一般编程</td></tr>
+        <tr><td><code>high</code></td><td>慢</td><td>难题、推理</td></tr>
+        <tr><td><code>xhigh</code></td><td>最慢</td><td>复杂数学/系统设计</td></tr>
+      </tbody>
+    </table>
+
     <h2 id="balance">额度查询</h2>
     <div class="ep">
       <span class="badge get">GET</span>
